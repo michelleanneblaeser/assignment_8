@@ -1,0 +1,131 @@
+---
+title: "Untitled"
+output: html_document
+---
+Install packages:
+```{r}
+library(pacman)
+p_load(semPlot, tidyverse, lavaan, psych)
+```
+Load data:
+```{r}
+data <- read.delim("../data/Northdale survey _reverse coded_.dat")
+```
+Create the scales (make the variables for path analysis)
+```{r}
+#   Threat
+    data$Thrt_Phy1<-data$Thrt_Phy1/3
+    data$Thrt_Phy2<-data$Thrt_Phy2/3
+    data$Thrt_Phy3<-data$Thrt_Phy3/3
+    data$threat_scale<-data$Thrt_Phy1+data$Thrt_Phy2+data$Thrt_Phy3
+#   Prejudice
+    data$Att_IS1<-(data$Att_IS1-1)/6.75    
+    data$Att_IS2<-(data$Att_IS2-1)/6.75  
+    data$Att_IS4<-(data$Att_IS4-1)/6.75  
+    data$prejudice_scale<-(data$Att_IS1 + data$Att_IS2 + data$Att_IS4)
+#   Contact quantity
+    data$Cnt_pos_B<-data$Cnt_pos_B/2
+    data$Cnt_pos_IS1<-data$Cnt_pos_IS1/2
+    data$contactquant_scale<-data$Cnt_pos_B+data$Cnt_pos_IS1
+#   Contact_quality
+    data$Cnt_Qul_IS1<-data$Cnt_Qul_IS1/3
+    data$Cnt_Qul_IS2<-data$Cnt_Qul_IS2/3
+    data$Cnt_Qul_IS3<-data$Cnt_Qul_IS3/3
+    data$contactqual_scale<-data$Cnt_Qul_IS1+data$Cnt_Qul_IS2+data$Cnt_Qul_IS3
+#   Empathy
+    data$Empath1<-data$Empath1/3    
+    data$Empath2<-data$Empath2/3
+    data$Empath3<-data$Empath3/3
+    data$empathy_scale<-(data$Empath1 + data$Empath2 + data$Empath3)
+```
+```{r}
+path.dat <- data
+```
+Use the .R script file (first 35 lines) and data file from the first SEM seminar to test the path model that proposes: contact quality mitigates threat, and creates empathy, and these each lead to reduced prejudice – however, contact quality does not directly affect prejudice. Inspect the residuals, and add in paths you think may be important. Use the anova command to compare nested models (i.e. models that can be turned into each other by deleting or adding paths only). Construct a diagram of the final model, and annotate it appropriately. You will need to figure out how to insert that diagram into your markdown file. Interpret your model.
+
+Step 1: Define the path model
+```{r}
+pathm1 <- '
+      threat_scale ~ contactqual_scale
+      empathy_scale ~ contactqual_scale
+      prejudice_scale ~ threat_scale + empathy_scale 
+
+'    
+prejpathfit1 <- sem(pathm1, data = path.dat)
+summary(prejpathfit1, fit.measures = T, standardized = T)   
+```
+The model above is significantly different from the saturated model (p < 0.001, df = 2), which indicates that our model may yet be improved by adding more paths, although with only two degrees of freedom, we are limited in what we can add. THe model is also significicantly different from the null model, which means that some significant improvements have been made from the no information rate (p < 0.001, df = 6). The problem with chi square measures of fit on sample sizes above 200 is that they are often statistically significant. Other measures of fit may be better suited to our analysis of this model. Both the CFI and the TLI are very low, but these incremental fit indices are reliant on chi squared values - the problems with these have been discussed above. The AIC and BIC values are noted for comparison with alternate models. We want a RMSEA of < 0.05, but our RMSEA for the above model is quite high (RMSEA = 0.25, CI = 0.19 - 0.33). We also want our SRMR to be < 0.05, and this measure comes closer top the desired value (SRMR = 0.10). 
+
+We see from the standardized regression co-efficients that contact quality mitigates threat (beta = -0.27, p < 0.001), and predicts empathy (beta = 0.28, p < 0.001). Prejudice is predicted by threat (beta = 0.28, p < 0.001), and is mitigated (to a lesser extent) by empathy (beta = -0.20, p < 0.001).
+
+Next, we consider the model visually:
+```{r}
+semPaths(prejpathfit1, whatLabels = "std", residuals = TRUE, nCharNodes = 15, sizeMan = 15, sizeMan2 = 5, shapeMan = "rectangle", edge.label.cex = .9, layout = "circle")
+```
+
+Next, we consider the residuals and modification indices:
+```{r}
+resid(prejpathfit1 , type = "normalized")
+modificationindices(prejpathfit1, sort = T)
+
+```
+The covariance between threat and prejudice is overestimated (predicted as being stronger than the empirical data suggests), and the covariance between empathy and prejucdice is underestimated (predicted as being weaker than the empirical data suggests). The covariance between contact quality & threat, and contact quality & empathy (respectively) is accurately predicted by the model (no difference between observed and predicted values).
+The modification indices would usually be examined to determine whether there are correlations between the error terms in the scale, but in this model we only work with scale scores and not with the manifest variables themselves, so this is not possible.
+
+We now consider whether additionally predicting threat from contact quality could improve our model
+
+Model with prejucice also directly predicted by contact quality:
+```{r}
+pathm2 <- '
+      threat_scale ~ contactqual_scale
+      empathy_scale ~ contactqual_scale
+      prejudice_scale ~ threat_scale + empathy_scale + contactqual_scale
+
+'    
+prejpathfit2 <- sem(pathm2, data = path.dat)
+summary(prejpathfit2, fit.measures = T, standardized = T)
+```
+We note the same issues with the chi squared values as mentioned in the first model. The CFI and TLI are much better than the first model, but still don't indicate a good fit (and are still subject to their reliance on the abovementioned chi-squared values). AIC and BIC are noted for comparison between model 1 and model 2 (see next chunk). RMSEA has gotten better (RMSEA = 0.21, CI = 0.12 - 0.31, as compared to model 1: RMSEA = 0.25, CI = 0.19 - 0.33), but still doesn't indicate a good fit (p < 0.05). SRMR has also improved (SRMR = 0.06, as compared to model 1: SRMR = 0.10), and is approaching a value that indicates good fit (p < 0.05)
+
+The strongest predictor of prejudice is contact quality. As contact quality increases, so prejudice decreases (beta = -0.30, p < 0.001). The addition of this direct path decreases the predictive value of the mediator variables: threat (model 1 beta = 0.28, model 2 beta = 0.19), and empathy (model 1 beta = -0.20, model 2 beta = -0.11). This suggests that prejudice is better predicted by contact quality than by the two mediating variables. 
+
+We compare the AIC and BIC values for the two models to see which model best presdicts prejudice
+Model 1 predicts prejudice from contact quality through two mediator variables: empathy and threat, however contact quality is not used to directly predict prejudice
+Model 2 also predicts prejudice from contact quality through two mediator variables: empathy and threat, but it also predicts prejudice through contact quality directly
+```{r}
+anova(prejpathfit1, prejpathfit2)
+```
+The chi squared diffrence test indicates that the second model (which additionally predicts prejudice from contact quality directly) is significantly better than the first model (which only predicts prejudice from contact quality through the two mediator variables). We note that the second model is more complex, but only slightly (it has 1 degree of freedom less than the first model)
+
+From the trends we noticed in the fit measures and coefficients, we decide to proceed with the second model
+First we consider model 2 visually
+```{r}
+semPaths(prejpathfit2, whatLabels = "std", residuals = TRUE, nCharNodes = 15, sizeMan = 15, sizeMan2 = 5, shapeMan = "rectangle", edge.label.cex = .9, layout = "circle")
+```
+Next we inspect the residuals for model 2:
+```{r}
+resid(prejpathfit2 , type = "normalized")
+```
+We see that there is no difference in the observed and predicted covariances between contact quality & threat, contact quality & empathy, and contact quality & prejudice respectively. We also note that the difference between the observed and expected values for threat & prejudice have dropped (model 1: -0.65, model 2: -0.34), as has the difference for empathy & prejudice (model 1: 0.91, model 2: 0.61). This indictes that model 2 is better able to predict the observed data than model 1 could.
+
+Next we look at the linear model output for the second model
+We keep only the complete cases (to make things comparable)
+```{r}
+path.dat %<>% select(contactqual_scale, prejudice_scale, threat_scale, empathy_scale) %>% 
+  na.omit()
+# First compute first step regressions
+lm_model_pathm2_A1 <- lm(threat_scale ~ contactqual_scale, data = path.dat)
+summary(lm_model_pathm2_A1)
+lm_model_pathm2_A2 <- lm(empathy_scale ~ contactqual_scale, data = path.dat)
+summary(lm_model_pathm2_A2)
+# Now model prejudice
+lm_model_pathm2_B <- lm(prejudice_scale ~ threat_scale + empathy_scale + contactqual_scale, data = path.dat)
+summary(lm_model_pathm2_B, standardized = T)
+```
+The regression analyses indicate:
+1: Contact quality significantly lowers the perception of threat (beta = -0.25, p < 0.001)
+2: Contact quality significantly increases empathy (beta = 0.26, p < 0.001)
+3: Contact quality is the most significant variable that lowers prejudice (beta = -0.32, p < 0.001), followed by a low perception of threat (beta = 0.21, p = 0.001). Empathy becomes an insignificant variable in lowering prejudice (beta = 0.12, p = 0.07) when contact quality is added as a direct predictor of prejudice.
+
+
+
