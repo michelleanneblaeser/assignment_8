@@ -58,6 +58,8 @@ The model above is significantly different from the saturated model (p < 0.001, 
 
 We see from the standardized regression co-efficients that contact quality mitigates threat (beta = -0.27, p < 0.001), and predicts empathy (beta = 0.28, p < 0.001). Prejudice is predicted by threat (beta = 0.28, p < 0.001), and is mitigated (to a lesser extent) by empathy (beta = -0.20, p < 0.001).
 
+Variances are all positive, and standard errors are all acceptably low.
+
 Next, we consider the model visually:
 ```{r}
 semPaths(prejpathfit1, whatLabels = "std", residuals = TRUE, nCharNodes = 15, sizeMan = 15, sizeMan2 = 5, shapeMan = "rectangle", edge.label.cex = .9, layout = "circle")
@@ -87,7 +89,8 @@ summary(prejpathfit2, fit.measures = T, standardized = T)
 ```
 We note the same issues with the chi squared values as mentioned in the first model. The CFI and TLI are much better than the first model, but still don't indicate a good fit (and are still subject to their reliance on the abovementioned chi-squared values). AIC and BIC are noted for comparison between model 1 and model 2 (see next chunk). RMSEA has gotten better (RMSEA = 0.21, CI = 0.12 - 0.31, as compared to model 1: RMSEA = 0.25, CI = 0.19 - 0.33), but still doesn't indicate a good fit (p < 0.05). SRMR has also improved (SRMR = 0.06, as compared to model 1: SRMR = 0.10), and is approaching a value that indicates good fit (p < 0.05)
 
-The strongest predictor of prejudice is contact quality. As contact quality increases, so prejudice decreases (beta = -0.30, p < 0.001). The addition of this direct path decreases the predictive value of the mediator variables: threat (model 1 beta = 0.28, model 2 beta = 0.19), and empathy (model 1 beta = -0.20, model 2 beta = -0.11). This suggests that prejudice is better predicted by contact quality than by the two mediating variables. 
+The strongest predictor of prejudice is contact quality. As contact quality increases, so prejudice decreases (beta = -0.30, p < 0.001). The addition of this direct path decreases the predictive value of the mediator variables: threat (model 1 beta = 0.28, p < 0.001; model 2 beta = 0.19, p = 0.001), and empathy (model 1 beta = -0.20, p < 0.001; model 2 beta = -0.11, p = 0.06). Note that the predictive value of empathy decreases to non-significance when prejudice is predicted directly from contact quality. This suggests that prejudice is better predicted by contact quality than by the two mediating variables. 
+VAriances are all positive and standard errors are all reasonably small.
 
 We compare the AIC and BIC values for the two models to see which model best presdicts prejudice
 Model 1 predicts prejudice from contact quality through two mediator variables: empathy and threat, however contact quality is not used to directly predict prejudice
@@ -126,6 +129,166 @@ The regression analyses indicate:
 1: Contact quality significantly lowers the perception of threat (beta = -0.25, p < 0.001)
 2: Contact quality significantly increases empathy (beta = 0.26, p < 0.001)
 3: Contact quality is the most significant variable that lowers prejudice (beta = -0.32, p < 0.001), followed by a low perception of threat (beta = 0.21, p = 0.001). Empathy becomes an insignificant variable in lowering prejudice (beta = 0.12, p = 0.07) when contact quality is added as a direct predictor of prejudice.
+
+----------------------------
+Test the measurement model that is implicit in 1 above. Note that the notation =~ indicates a loading in Lavaan (i.e. a path relating an indicator/manifest variable to a latent variable). What do you conclude? Check the residuals and see if this changes your mind. Construct a diagram that reports your measurement model, you only need to show latent and manifest variables
+
+First, we get the data in the correct format:
+```{r}
+data2 <- read.delim("../data/Northdale survey _reverse coded_.dat")
+```
+Convert the manifest variables
+```{r}
+#   Threat
+    data2$Thrt_Phy1<-data2$Thrt_Phy1/3
+    data2$Thrt_Phy2<-data2$Thrt_Phy2/3
+    data2$Thrt_Phy3<-data2$Thrt_Phy3/3
+#   Prejudice
+    data2$Att_IS1<-(data2$Att_IS1-1)/6.75    
+    data2$Att_IS2<-(data2$Att_IS2-1)/6.75  
+    data2$Att_IS4<-(data2$Att_IS4-1)/6.75  
+#   Contact quantity
+    data2$Cnt_pos_B<-data2$Cnt_pos_B/2
+    data2$Cnt_pos_IS1<-data2$Cnt_pos_IS1/2
+#   Contact_quality
+    data2$Cnt_Qul_IS1<-data2$Cnt_Qul_IS1/3
+    data2$Cnt_Qul_IS2<-data2$Cnt_Qul_IS2/3
+    data2$Cnt_Qul_IS3<-data2$Cnt_Qul_IS3/3
+#   Empathy
+    data2$Empath1<-data2$Empath1/3    
+    data2$Empath2<-data2$Empath2/3
+    data2$Empath3<-data2$Empath3/3
+```
+```{r}
+path2.dat <- data2
+```
+Next, we set up the measurement model and structural model implicit in the analyses above
+```{r}
+#   SEM of model2
+    pathm2full <- '
+            # MEASUREMENT MODEL
+              threat_scale       =~ Thrt_Phy1 + Thrt_Phy2 + Thrt_Phy3
+              contactqual_scale  =~ Cnt_Qul_IS1 + Cnt_Qul_IS2 + Cnt_Qul_IS3 
+              prejudice_scale    =~ Att_IS1 + Att_IS2 + Att_IS4
+              empathy_scale      =~ Empath1 + Empath2 + Empath3
+      
+            # STRUCTURAL MODEL
+              threat_scale ~ contactqual_scale
+              empathy_scale ~ contactqual_scale
+              prejudice_scale ~ threat_scale + empathy_scale + contactqual_scale
+                  '
+```
+```{r}
+prejpathfit2_full <- sem(pathm2full, data = path2.dat)
+    summary(prejpathfit2_full , fit.measures = T, standardized = T)
+```
+The model 2 above ("model 2 full" - which includes both the measurement and structural components of the model) is much better than the previous model ("model 2"), which only included the structural model (i.e.: only latent variables and not manifest variables).
+Firstly the degrees of freedom have increased from 1 to 49, which will influence almost all of the fit measures for the model.
+The model (model 2 full) is no longer significantly differnt from the saturated model (p = 0.17, df = 49), despite the large sample size. This indicates that, while our model is simpler than the model with all possible paths, it does not have a significantly worse predictive value. This model is still significantly differnt from the null model (p < 0.001, df = 66), indicating that, despite its reduced complexity, it is significantly better than the no-information rate.
+CFI and TLI values indicate the relative position of our model between the null model and the saturated model. They should approach 1, but any value > 0.95 is considered a good fit. Both of these values indicate that our model is a good fit (CFI = 1.00, TLI = 0.99).
+AIC and BIC values have dropped drastically, indicating that the full model is an improvement of our previous model (latent variables only). It is unfortunately not possible to test the significanvce of this improvement with anova, as it is not a nested model
+RMSEA should approximate 0, and should be < 0.05 to indicate a good fit. The upper end of the CI should also ideally be < 0.05. RMSEA indicates our model has good fit on both accounts (RMSEA = 0.03, CI = 0.00 - 0.05).
+The SRMR is an absolute measure of fit, and is thus biased towards small sample sizes and low df. This explains why this is our only test statistic that didn't improve in the full model (but surprisingly it didn't get worse, as the number of df drastically increased). SRMR should approximate 0 (which would indicate no diffrence in the observed and predicted values), but values of < 0.05 (and some say < 0.08) indicates a good fit. The SRMR for our model indicates that it has good fit, or is atleast approaching a good fit (SRMR = 0.06)
+
+The manifest variables all significantly load onto the latent variables.
+All proposed paths are significant, except for the path between empathy and prejudice (noted in the previous model interpretation):
+1. Contact quality significantly mitigates the perception of threat (beta = -0.29, p < 0.001)
+2. Contact quality significantly increases empathy (beta = 0.32, p < 0.001)
+3. Lowered prejudice is significantly predicted by incresed contact quality (beta = -0.36, p < 0.001), and decreased perception of threat (beta = 0.19, p = 0.003). It is not significantly predicted by empathy (beta = -0.10, p = 0.12). In the previous model (model 2 - latent variables only) we made this observation, but were unable to remove empathy, as our model would become "just identified" (df = 0, therefore no fit statistics possible). Now that we have a full model with multiple degrees of freedom, we can consider whether the model would be improved by removing empathy as a mediator variable.
+
+The variances are all positive, and the standard errors are all reasonably small.
+
+Next, we consider the model visually:
+```{r}
+semPaths(prejpathfit2_full, whatLabels = "std", residuals = TRUE, nCharNodes = 15, sizeMan = 8, shapeMan = "circle", shapeLat = "rectangle", sizeLat = 14, sizeLat2 = 5, edge.label.cex = .8, layout = "tree", rotation = 2, fixedStyle = c("red", 3), optimizeLatRes = T)
+```
+Next, we consider the residuals and modification indices:
+```{r}
+resid(prejpathfit2_full , type = "normalized")
+modificationindices(prejpathfit2_full, sort = T)
+
+```
+Covariance matrix indicates the difference between the covariance values observed in the sample and the covariance values expected/predicted by the model (i.e.: the residuals of the covariance matrices). The biggest residuals are for the covariances between empathy and threat - understandable, as it wasn't included in the structural model. There are also substantial residuals for the covariances between contact quality and threat (esp for contact qual item 3 & threat item 1, and contact qual items [1, 2] & threat item 3). There are also large residuals for the covariances between threat and prejudice (esp for prej item 2 and threat item 2). As expected, the lowest  residuals are for the covariances between contact quality and prejudice, and the highest residuals (of the covariances proposed by the model), are for the covariances between prejudice and empathy (esp for empathy item 1 & prej item 1, and empathy item 3 & prej item 2). Empathy item 2 has relatively low residuals in its covariance with prejudice, and may be worth investigating as a sole measure of empathy for future predictions.
+
+Modification indices indicate that the strongest improvementss to the model could be made by:
+1. Predicting empathy from prejudice. This is not our objective, as we aim to predict prejudice. However, it suggests that emapthy is predicted from prejudice and not vice versa, which may explain why empathy is not a significant predictor of prejudice in our model
+2 & 3. Predicting threat from empathy and predicting empathy from threat. This suggests that while empathy may be predictive of percieved threat (which in turn is predictive of prejudice), empathy is not directly predictive of prejudice. Threat and empathy seem to have a bi-directional relationship.
+4. Allowing empathy and threat residuals to covary. Empathy clearly plays a role in this model, but not in the way the model suggests. This modification reaffirms that empathy and threat may have a bidirectinal relationship.
+5. Predicting threat from prejudice. Again, this isn't our objective. But as threat already significantly predicts prejudice, this suggests a bi-directional relationship.
+6-9. These 4 modifications reaffirm the relationship between threat and empathy. Either the residuals of the items on the threat and empathy scales should be allowed to covary, or items from the empathy scale are manifest variables that measure the latent variable threat.
+
+Based on the above modification indices, threat and empathy residuals should be allowed to covary
+The suggested modifications for the covarying residuals between these scale items are implemented. 
+```{r}
+#   SEM of model3
+    pathm3full <- '
+            # MEASUREMENT MODEL
+              threat_scale       =~ Thrt_Phy1 + Thrt_Phy2 + Thrt_Phy3
+              contactqual_scale  =~ Cnt_Qul_IS1 + Cnt_Qul_IS2 + Cnt_Qul_IS3 
+              prejudice_scale    =~ Att_IS1 + Att_IS2 + Att_IS4
+              empathy_scale      =~ Empath1 + Empath2 + Empath3
+      
+            # STRUCTURAL MODEL
+              threat_scale ~ contactqual_scale
+              empathy_scale ~ contactqual_scale
+              prejudice_scale ~ threat_scale + empathy_scale + contactqual_scale
+                
+            # CORRELATED ERRORS
+                  Thrt_Phy1 ~~ Empath1
+                  Thrt_Phy2 ~~ Empath3
+                  Thrt_Phy3 ~~ Empath3
+
+                  '
+```
+```{r}
+prejpathfit3_full <- sem(pathm3full, data = path2.dat)
+    summary(prejpathfit3_full , fit.measures = T, standardized = T)
+```
+Allowing these covariances of residuals of scale items improves our model (CFI = 1.00, TLI = 1.00, RMSEA = 0.00, CI = 0.00 - 0.03, SRMR = 0.06).
+Empathy still doesnt significantly predict threat, but its predictive value has improved (model 2 full: beta = -0.10, p = 0.12; model 3 full: beta = -0.11, p = 0.10)
+
+An inspection of our covariances of residuals indicate that threat item 2 does not significantly covary with empathy item 2 or empathy item 3. We can attempt to remove these non-significant covariations:
+
+
+```{r}
+#   SEM of model4
+    pathm4full <- '
+            # MEASUREMENT MODEL
+              threat_scale       =~ Thrt_Phy1 + Thrt_Phy2 + Thrt_Phy3
+              contactqual_scale  =~ Cnt_Qul_IS1 + Cnt_Qul_IS2 + Cnt_Qul_IS3 
+              prejudice_scale    =~ Att_IS1 + Att_IS2 + Att_IS4
+              empathy_scale      =~ Empath1 + Empath2 + Empath3
+      
+            # STRUCTURAL MODEL
+              threat_scale ~ contactqual_scale
+              empathy_scale ~ contactqual_scale
+              prejudice_scale ~ threat_scale + empathy_scale + contactqual_scale
+                
+            # CORRELATED ERRORS
+                  Thrt_Phy1 ~~ Empath1
+
+                  '
+```
+```{r}
+prejpathfit4_full <- sem(pathm4full, data = path2.dat)
+    summary(prejpathfit4_full , fit.measures = T, standardized = T)
+```
+Removing non-significant covariations of residuals does not improve the model. So while these covariations are not significant on their own, they do improve the model overall when allowed. We reatin model 3.
+
+We inspect the model (model 3 full) visually:
+```{r}
+semPaths(prejpathfit3_full, whatLabels = "std", residuals = TRUE, nCharNodes = 15, sizeMan = 8, shapeMan = "circle", shapeLat = "rectangle", sizeLat = 14, sizeLat2 = 5, edge.label.cex = .8, layout = "tree", rotation = 2, fixedStyle = c("red", 3), optimizeLatRes = T, curve = 3, curvature = .7)
+```
+The three item covariances can be seen on the far right hand side.
+-------------------------------------------------------------------------
+
+By default, Lavaan tests oblique factor structures (i.e. where factors are allowed to correlate with each other). Force Lavaan to test an orthogonal factor structure for the measurement model in 2, and compare results.
+
+```{r}
+prejpathfit3_full_orth <- sem(pathm3full, data = path2.dat, orthogonal = TRUE)
+    summary(prejpathfit3_full_orth , fit.measures = T, standardized = T)
+```
+Changing the rotation to orthogonal did not alter the model noticably.
 
 
 
